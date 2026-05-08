@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Power BI Embedded — Cost Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161e;
+    --surface2: #1a1e29;
+    --surface3: #222636;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --accent: #4f7cff;
+    --accent2: #7c5cfc;
+    --accent-glow: rgba(79,124,255,0.15);
+    --green: #2dd4a0;
+    --green-bg: rgba(45,212,160,0.1);
+    --amber: #f5a623;
+    --amber-bg: rgba(245,166,35,0.1);
+    --red: #ff5f5f;
+    --red-bg: rgba(255,95,95,0.1);
+    --text: #e8eaf2;
+    --text2: #8b90a8;
+    --text3: #555a72;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* Header */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface);
+  }
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 14px; font-weight: 500;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .header-title { font-size: 15px; font-weight: 500; color: var(--text); }
+  .header-sub { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+  .header-badge {
+    margin-left: auto;
+    font-size: 11px; font-family: var(--mono);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+  }
+
+  /* Layout */
+  .main { padding: 32px 40px; max-width: 1100px; margin: 0 auto; }
+
+  .page-title {
+    font-size: 28px; font-weight: 600;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+  }
+  .page-title span { color: var(--accent); }
+  .page-desc { font-size: 14px; color: var(--text2); margin-bottom: 32px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+  }
+  .card-title {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text3);
+    font-family: var(--mono);
+    margin-bottom: 18px;
+  }
+
+  /* SKU Selector */
+  .sku-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 24px; }
+  .sku-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s ease;
+    color: var(--text2);
+  }
+  .sku-btn:hover { border-color: var(--border2); background: var(--surface3); }
+  .sku-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    color: var(--text);
+  }
+  .sku-btn .sn { font-size: 15px; font-weight: 600; font-family: var(--mono); display: block; color: inherit; }
+  .sku-btn .sd { font-size: 10px; display: block; margin-top: 3px; color: inherit; opacity: 0.6; line-height: 1.4; }
+
+  /* Sliders */
+  .slider-group { margin-bottom: 20px; }
+  .slider-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .slider-label { font-size: 13px; color: var(--text2); }
+  .slider-val { font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--accent); }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%; height: 4px;
+    background: var(--surface3);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 8px rgba(79,124,255,0.5);
+    cursor: pointer;
+  }
+
+  /* Metric cards */
+  .metric-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .metric-label { font-size: 11px; color: var(--text3); font-family: var(--mono); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+  .metric-val { font-size: 26px; font-weight: 600; font-family: var(--mono); letter-spacing: -0.5px; }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .metric-val.green { color: var(--green); }
+  .metric-val.accent { color: var(--accent); }
+
+  /* Cost breakdown */
+  .cost-line {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .cost-line:last-child { border-bottom: none; }
+  .cl-label { color: var(--text2); display: flex; align-items: center; gap: 8px; }
+  .cl-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .cl-amount { font-family: var(--mono); font-weight: 500; color: var(--text); }
+
+  .total-line {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-top: 16px; padding-top: 16px;
+    border-top: 1px solid var(--border2);
+  }
+  .total-label { font-size: 13px; font-weight: 500; color: var(--text2); }
+  .total-amount { font-size: 28px; font-weight: 600; font-family: var(--mono); color: var(--text); letter-spacing: -1px; }
+
+  /* Info box */
+  .info-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-top: 16px;
+  }
+  .info-box.green { border-left-color: var(--green); }
+  .info-box.amber { border-left-color: var(--amber); }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; font-size: 13px; color: var(--text2);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .toggle {
+    width: 40px; height: 22px;
+    background: var(--surface3);
+    border-radius: 11px;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+    border: 1px solid var(--border2);
+    flex-shrink: 0;
+  }
+  .toggle.on { background: var(--accent); border-color: var(--accent); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: left 0.2s;
+  }
+  .toggle.on::after { left: 20px; }
+
+  /* Chart area */
+  .chart-wrap { position: relative; width: 100%; height: 200px; }
+
+  /* Savings badge */
+  .savings-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px; font-family: var(--mono); font-weight: 500;
+    margin-top: 12px;
+  }
+  .savings-badge.good { background: var(--green-bg); color: var(--green); border: 1px solid rgba(45,212,160,0.2); }
+  .savings-badge.warn { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(245,166,35,0.2); }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 20px 40px;
+    font-size: 12px; color: var(--text3);
+    text-align: center;
+    font-family: var(--mono);
+    margin-top: 40px;
+  }
+
+  @media (max-width: 768px) {
+    header { padding: 16px 20px; }
+    .main { padding: 24px 20px; }
+    .grid, .grid-3 { grid-template-columns: 1fr; }
+    .sku-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">PBI</div>
+  <div>
+    <div class="header-title">Power BI Embedded</div>
+    <div class="header-sub">Cost Calculator</div>
+  </div>
+  <div class="header-badge">Prices in USD · Updated May 2026</div>
+</header>
+
+<div class="main">
+  <h1 class="page-title">Estimate your <span>monthly cost</span></h1>
+  <p class="page-desc">Configure your capacity tier, team size, and usage hours to get an accurate monthly estimate. External viewers are always free.</p>
+
+  <div class="grid">
+
+    <!-- Left: Config -->
+    <div>
+      <div class="card">
+        <div class="card-title">Azure Capacity (SKU)</div>
+        <div class="sku-grid" id="skuGrid">
+          <button class="sku-btn" onclick="selectSKU('A1',1.008)" id="btn-A1">
+            <span class="sn">A1</span>
+            <span class="sd">1 vCore<br>3 GB RAM<br>~$735/mo</span>
+          </button>
+          <button class="sku-btn active" onclick="selectSKU('A2',2.016)" id="btn-A2">
+            <span class="sn">A2</span>
+            <span class="sd">2 vCore<br>5 GB RAM<br>~$1,470/mo</span>
+          </button>
+          <button class="sku-btn" onclick="selectSKU('A3',4.032)" id="btn-A3">
+            <span class="sn">A3</span>
+            <span class="sd">4 vCore<br>10 GB RAM<br>~$2,940/mo</span>
+          </button>
+          <button class="sku-btn" onclick="selectSKU('A4',8.064)" id="btn-A4">
+            <span class="sn">A4</span>
+            <span class="sd">8 vCore<br>25 GB RAM<br>~$5,880/mo</span>
+          </button>
+          <button class="sku-btn" onclick="selectSKU('A5',16.128)" id="btn-A5">
+            <span class="sn">A5</span>
+            <span class="sd">16 vCore<br>50 GB RAM<br>~$11,760/mo</span>
+          </button>
+          <button class="sku-btn" onclick="selectSKU('A6',32.256)" id="btn-A6">
+            <span class="sn">A6</span>
+            <span class="sd">32 vCore<br>100 GB RAM<br>~$23,520/mo</span>
+          </button>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="slider-label">Active hours per day</span>
+            <span class="slider-val" id="hoursVal">10h / day</span>
+          </div>
+          <input type="range" min="1" max="24" value="10" step="1" id="hoursSlider" oninput="update()">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="slider-label">Report creators (Pro license · $14/mo)</span>
+            <span class="slider-val" id="creatorsVal">3 users</span>
+          </div>
+          <input type="range" min="1" max="30" value="3" step="1" id="creatorsSlider" oninput="update()">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="slider-label">Admins / Power users (PPU · $24/mo)</span>
+            <span class="slider-val" id="adminsVal">1 user</span>
+          </div>
+          <input type="range" min="0" max="10" value="1" step="1" id="adminsSlider" oninput="update()">
+        </div>
+
+        <div class="toggle-row">
+          <span>Pause capacity on weekends</span>
+          <div class="toggle" id="weekendToggle" onclick="toggleWeekend()"></div>
+        </div>
+
+        <div class="info-box green">
+          <strong>External viewers are always $0.</strong> In the App Owns Data model, end users accessing your embedded reports do not need Power BI licenses — regardless of how many there are.
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Results -->
+    <div style="display:flex; flex-direction:column; gap:20px;">
+
+      <div class="grid-3" style="margin-bottom:0; gap:12px;">
+        <div class="metric-card">
+          <div class="metric-label">External users</div>
+          <div class="metric-val green">$0</div>
+          <div class="metric-sub">Always free</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Est. monthly</div>
+          <div class="metric-val accent" id="totalMetric">$0</div>
+          <div class="metric-sub" id="perDayMetric">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">vs. 24h continuous</div>
+          <div class="metric-val green" id="savingsMetric">—</div>
+          <div class="metric-sub" id="savingsSubMetric">—</div>
+        </div>
+      </div>
+
+      <div class="card" style="flex:1;">
+        <div class="card-title">Cost Breakdown</div>
+
+        <div class="cost-line">
+          <span class="cl-label"><span class="cl-dot" style="background:var(--accent)"></span>Azure capacity (<span id="skuName">A2</span> · <span id="hoursLabel">10h</span>/day)</span>
+          <span class="cl-amount" id="capacityLine">—</span>
+        </div>
+        <div class="cost-line">
+          <span class="cl-label"><span class="cl-dot" style="background:#7c5cfc"></span>Pro licenses (<span id="creatorsLabel">3</span> × $14)</span>
+          <span class="cl-amount" id="proLine">$42</span>
+        </div>
+        <div class="cost-line">
+          <span class="cl-label"><span class="cl-dot" style="background:var(--green)"></span>PPU licenses (<span id="adminsLabel">1</span> × $24)</span>
+          <span class="cl-amount" id="ppuLine">$24</span>
+        </div>
+        <div class="cost-line">
+          <span class="cl-label"><span class="cl-dot" style="background:var(--text3)"></span>External viewers (any number)</span>
+          <span class="cl-amount" style="color:var(--green)">$0.00</span>
+        </div>
+
+        <div class="total-line">
+          <span class="total-label">Estimated total / month</span>
+          <span class="total-amount" id="totalBig">—</span>
+        </div>
+
+        <div id="savingsBadge" class="savings-badge good" style="display:none">
+          <span>↓</span><span id="savingsText">—</span>
+        </div>
+
+        <div class="info-box amber" id="continuousNote" style="margin-top:16px">
+          Running 24h/day all month = <strong id="continuousAmt">—</strong>. Pausing during off-hours is the biggest cost lever.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="card">
+    <div class="card-title">Monthly cost breakdown — configured usage vs. 24h continuous</div>
+    <div class="chart-wrap">
+      <canvas id="costChart" role="img" aria-label="Bar chart comparing configured cost vs 24h continuous cost"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Prices based on Azure A-SKU pay-as-you-go rates (US East) as of May 2026 · Pro at $14/user/mo · PPU at $24/user/mo · Values are estimates — verify on the Azure Pricing Calculator before budgeting.
+</footer>
+
+<script>
+let currentSKU = 'A2';
+let currentHourlyRate = 2.016;
+let weekendPause = false;
+let chartInstance = null;
+
+function selectSKU(name, rate) {
+  currentSKU = name;
+  currentHourlyRate = rate;
+  document.querySelectorAll('.sku-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + name).classList.add('active');
+  update();
+}
+
+function toggleWeekend() {
+  weekendPause = !weekendPause;
+  const t = document.getElementById('weekendToggle');
+  t.classList.toggle('on', weekendPause);
+  update();
+}
+
+function fmt(n) {
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function update() {
+  const hours = parseInt(document.getElementById('hoursSlider').value);
+  const creators = parseInt(document.getElementById('creatorsSlider').value);
+  const admins = parseInt(document.getElementById('adminsSlider').value);
+
+  document.getElementById('hoursVal').textContent = hours + 'h / day';
+  document.getElementById('creatorsVal').textContent = creators + ' user' + (creators !== 1 ? 's' : '');
+  document.getElementById('adminsVal').textContent = admins + ' user' + (admins !== 1 ? 's' : '');
+
+  // Active days per month
+  const activeDaysPerMonth = weekendPause ? 22 : 30.4;
+  const activeHoursPerMonth = hours * activeDaysPerMonth;
+
+  const capacityCost = currentHourlyRate * activeHoursPerMonth;
+  const proCost = creators * 14;
+  const ppuCost = admins * 24;
+  const total = capacityCost + proCost + ppuCost;
+
+  const continuousHours = weekendPause ? (24 * 22) : (24 * 30.4);
+  const continuousCost = (currentHourlyRate * continuousHours) + proCost + ppuCost;
+  const savings = continuousCost - total;
+  const savingsPct = Math.round((savings / continuousCost) * 100);
+
+  document.getElementById('skuName').textContent = currentSKU;
+  document.getElementById('hoursLabel').textContent = hours + 'h';
+  document.getElementById('creatorsLabel').textContent = creators;
+  document.getElementById('adminsLabel').textContent = admins;
+
+  document.getElementById('capacityLine').textContent = fmt(capacityCost);
+  document.getElementById('proLine').textContent = fmt(proCost);
+  document.getElementById('ppuLine').textContent = fmt(ppuCost);
+  document.getElementById('totalMetric').textContent = fmt(total);
+  document.getElementById('totalBig').textContent = fmt(total);
+  document.getElementById('perDayMetric').textContent = '~' + fmt(total / activeDaysPerMonth) + ' / day';
+  document.getElementById('continuousAmt').textContent = fmt(continuousCost);
+  document.getElementById('continuousNote').querySelector('strong').textContent = fmt(continuousCost);
+
+  if (savings > 0.5) {
+    document.getElementById('savingsMetric').textContent = '-' + savingsPct + '%';
+    document.getElementById('savingsSubMetric').textContent = 'vs. 24h continuous';
+    const badge = document.getElementById('savingsBadge');
+    badge.style.display = 'inline-flex';
+    document.getElementById('savingsText').textContent = 'You save ' + fmt(savings) + '/mo vs. running 24h';
+  } else {
+    document.getElementById('savingsMetric').textContent = '0%';
+    document.getElementById('savingsSubMetric').textContent = 'Running continuously';
+    document.getElementById('savingsBadge').style.display = 'none';
+  }
+
+  updateChart(capacityCost, proCost, ppuCost, continuousCost - proCost - ppuCost);
+}
+
+function updateChart(cap, pro, ppu, contCap) {
+  if (!chartInstance) return;
+  chartInstance.data.datasets[0].data = [cap, pro, ppu];
+  chartInstance.data.datasets[1].data = [contCap, pro, ppu];
+  chartInstance.update('none');
+}
+
+function initChart() {
+  const ctx = document.getElementById('costChart').getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Azure Capacity', 'Pro Licenses', 'PPU Licenses'],
+      datasets: [
+        {
+          label: 'Configured usage',
+          data: [0, 0, 0],
+          backgroundColor: 'rgba(79,124,255,0.7)',
+          borderRadius: 6,
+          borderSkipped: false
+        },
+        {
+          label: '24h continuous',
+          data: [0, 0, 0],
+          backgroundColor: 'rgba(255,255,255,0.08)',
+          borderRadius: 6,
+          borderSkipped: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: {
+            color: '#8b90a8',
+            font: { size: 11, family: 'DM Mono' },
+            boxWidth: 10, boxHeight: 10,
+            borderRadius: 3,
+            usePointStyle: false,
+            padding: 16
+          }
+        },
+        tooltip: {
+          backgroundColor: '#1a1e29',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#e8eaf2',
+          bodyColor: '#8b90a8',
+          callbacks: {
+            label: (ctx) => ' ' + ctx.dataset.label + ': $' + ctx.raw.toFixed(2)
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#555a72', font: { size: 11, family: 'DM Mono' } },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          border: { color: 'rgba(255,255,255,0.07)' }
+        },
+        y: {
+          ticks: {
+            color: '#555a72',
+            font: { size: 11, family: 'DM Mono' },
+            callback: (v) => '$' + v.toFixed(0)
+          },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          border: { color: 'rgba(255,255,255,0.07)' }
+        }
+      }
+    }
+  });
+}
+
+initChart();
+update();
+</script>
+</body>
+</html>
